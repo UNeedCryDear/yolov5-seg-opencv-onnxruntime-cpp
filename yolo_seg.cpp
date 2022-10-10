@@ -114,6 +114,7 @@ void YoloSeg::GetMask(const Mat& maskProposals, const Mat& mask_protos, const cv
 
 bool YoloSeg::Detect(Mat& SrcImg, Net& net, vector<OutputSeg>& output) {
 	Mat blob;
+	output.clear();
 	int col = SrcImg.cols;
 	int row = SrcImg.rows;
 	int maxLen = MAX(col, row);
@@ -222,7 +223,7 @@ void YoloSeg::DrawPred(Mat& img, vector<OutputSeg> result, vector<Scalar> color)
 	}
 	addWeighted(img, 0.5, mask, 0.5, 0, img); //将mask加在原图上面
 	imshow("1", img);
-	//imwrite("out.bmp", img);
+	imwrite("out.bmp", img);
 	waitKey();
 	//destroyAllWindows();
 
