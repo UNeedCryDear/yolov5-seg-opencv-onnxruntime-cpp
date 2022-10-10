@@ -223,7 +223,7 @@ void YoloSeg::DrawPred(Mat& img, vector<OutputSeg> result, vector<Scalar> color)
 	}
 	addWeighted(img, 0.5, mask, 0.5, 0, img); //将mask加在原图上面
 	imshow("1", img);
-	imwrite("out.bmp", img);
+	//imwrite("out.bmp", img);
 	waitKey();
 	//destroyAllWindows();
 
