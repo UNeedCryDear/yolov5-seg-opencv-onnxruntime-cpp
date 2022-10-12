@@ -2,6 +2,7 @@
 #include<opencv2//opencv.hpp>
 #include<math.h>
 #include "yolo_seg.h"
+#include<time.h>
 //#include"yolov5.h"
 
 using namespace std;
@@ -14,7 +15,7 @@ int yolov5_seg()
 	string model_path = "./models/yolov5s-seg.onnx";
 	YoloSeg test;
 	Net net;
-	if (test.ReadModel(net, model_path, false)) {
+	if (test.ReadModel(net, model_path, true)) {
 		cout << "read net ok!" << endl;
 	}
 	else {
@@ -31,9 +32,9 @@ int yolov5_seg()
 	}
 	vector<OutputSeg> result;
 	Mat img = imread(img_path);
+	clock_t t1, t2;
 	if (test.Detect(img, net, result)) {
 		test.DrawPred(img, result, color);
-
 	}
 	else {
 		cout << "Detect Failed!"<<endl;

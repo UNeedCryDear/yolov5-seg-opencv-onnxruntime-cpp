@@ -85,32 +85,6 @@ void YoloSeg::LetterBox(const cv::Mat& image, cv::Mat& outImage, cv::Vec4d& para
 	cv::copyMakeBorder(outImage, outImage, top, bottom, left, right, cv::BORDER_CONSTANT, color);
 }
 
-void YoloSeg::GetMask(const Mat& maskProposals, const Mat& mask_protos, const cv::Vec4d& params, const cv::Size& srcImgShape, vector<OutputSeg>& output) {
-	Mat protos = mask_protos.reshape(0, { _segChannels,_segWidth * _segHeight });
-	Mat matmulRes = (maskProposals * protos).t();
-	Mat masks = matmulRes.reshape(output.size(), { _segWidth,_segHeight });
-	vector<Mat> maskChannels;
-	split(masks, maskChannels);
-	for (int i = 0; i < output.size(); ++i) {
-		Mat dest, mask;
-		//sigmoid
-		cv::exp(-maskChannels[i], dest);
-		dest = 1.0 / (1.0 + dest);
-
-		Rect roi(int(params[2] / _netWidth * _segWidth), int(params[3] / _netHeight * _segHeight), int(_segWidth - params[2] / 2), int(_segHeight - params[3] / 2));
-		dest = dest(roi);
-		resize(dest, mask, srcImgShape, INTER_LINEAR);
-		mask = mask > _maskThreshold;
-		//crop
-		Mat m = Mat::zeros(srcImgShape, CV_8UC1);
-		Rect temp_rect = output[i].box;
-		rectangle(m, temp_rect, Scalar(255), -1, 8);
-		mask &= m;
-
-		output[i].mask = mask;
-
-	}
-}
 
 bool YoloSeg::Detect(Mat& SrcImg, Net& net, vector<OutputSeg>& output) {
 	Mat blob;
@@ -168,8 +142,8 @@ bool YoloSeg::Detect(Mat& SrcImg, Net& net, vector<OutputSeg>& output) {
 							float y = (pdata[1] - params[3]) / params[1];  //y
 							float w = pdata[2] / params[0];  //w
 							float h = pdata[3] / params[1];  //h
-							int left = (x - 0.5 * w) * ratio_w;
-							int top = (y - 0.5 * h) * ratio_h;
+							int left = MAX((x - 0.5 * w) * ratio_w,0);
+							int top =MAX( (y - 0.5 * h) * ratio_h,0);
 							classIds.push_back(classIdPoint.x);
 							confidences.push_back(max_class_socre * box_score);
 							boxes.push_back(Rect(left, top, int(w * ratio_w), int(h * ratio_h)));
@@ -185,12 +159,13 @@ bool YoloSeg::Detect(Mat& SrcImg, Net& net, vector<OutputSeg>& output) {
 	vector<int> nms_result;
 	NMSBoxes(boxes, confidences, _nmsScoreThreshold, _nmsThreshold, nms_result);
 	std::vector<vector<float>> temp_mask_proposals;
+	Rect holeImgRect(0, 0, SrcImg.cols, SrcImg.rows);
 	for (int i = 0; i < nms_result.size(); ++i) {
 		int idx = nms_result[i];
 		OutputSeg result;
 		result.id = classIds[idx];
 		result.confidence = confidences[idx];
-		result.box = boxes[idx];
+		result.box = boxes[idx]&holeImgRect;
 		temp_mask_proposals.push_back(picked_proposals[idx]);
 		output.push_back(result);
 	}
@@ -205,6 +180,32 @@ bool YoloSeg::Detect(Mat& SrcImg, Net& net, vector<OutputSeg>& output) {
 	else
 		return false;
 }
+void YoloSeg::GetMask(const Mat& maskProposals, const Mat& mask_protos, const cv::Vec4d& params, const cv::Size& srcImgShape, vector<OutputSeg>& output) {
+	Mat protos = mask_protos.reshape(0, { _segChannels,_segWidth * _segHeight });
+	Mat matmulRes = (maskProposals * protos).t();
+	Mat masks = matmulRes.reshape(output.size(), { _segWidth,_segHeight });
+	vector<Mat> maskChannels;
+	split(masks, maskChannels);
+
+	for (int i = 0; i < output.size(); ++i) {
+		Mat dest, mask;
+		//sigmoid
+		cv::exp(-maskChannels[i], dest);
+		dest = 1.0 / (1.0 + dest);
+
+		Rect roi(int(params[2] / _netWidth * _segWidth), int(params[3] / _netHeight * _segHeight), int(_segWidth - params[2] / 2), int(_segHeight - params[3] / 2));
+		dest = dest(roi);
+		resize(dest, mask, srcImgShape, INTER_NEAREST);
+
+		//crop
+		Rect temp_rect = output[i].box;
+		mask = mask(temp_rect) > _maskThreshold;
+		output[i].boxMask =mask;
+
+
+	}
+}
+
 void YoloSeg::DrawPred(Mat& img, vector<OutputSeg> result, vector<Scalar> color) {
 	Mat mask = img.clone();
 	for (int i = 0; i < result.size(); i++) {
@@ -213,7 +214,7 @@ void YoloSeg::DrawPred(Mat& img, vector<OutputSeg> result, vector<Scalar> color)
 		top = result[i].box.y;
 		int color_num = i;
 		rectangle(img, result[i].box, color[result[i].id], 2, 8);
-		mask.setTo(color[result[i].id], result[i].mask);
+		mask(result[i].box).setTo(color[result[i].id], result[i].boxMask);
 		string label = _className[result[i].id] + ":" + to_string(result[i].confidence);
 		int baseLine;
 		Size labelSize = getTextSize(label, FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
