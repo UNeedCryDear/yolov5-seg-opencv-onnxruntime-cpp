@@ -5,7 +5,7 @@
 **OpenCV>=4.5.0**
 
 ```
-python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx --dnn
+python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx
 ```
  
 #### 2022.10.10 更新：  
