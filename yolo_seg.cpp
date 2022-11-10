@@ -142,8 +142,8 @@ bool YoloSeg::Detect(Mat& SrcImg, Net& net, vector<OutputSeg>& output) {
 							float y = (pdata[1] - params[3]) / params[1];  //y
 							float w = pdata[2] / params[0];  //w
 							float h = pdata[3] / params[1];  //h
-							int left = MAX((x - 0.5 * w) * ratio_w,0);
-							int top =MAX( (y - 0.5 * h) * ratio_h,0);
+							int left = MAX((x - 0.5 * w) * ratio_w, 0);
+							int top = MAX((y - 0.5 * h) * ratio_h, 0);
 							classIds.push_back(classIdPoint.x);
 							confidences.push_back(max_class_socre * box_score);
 							boxes.push_back(Rect(left, top, int(w * ratio_w), int(h * ratio_h)));
@@ -161,20 +161,28 @@ bool YoloSeg::Detect(Mat& SrcImg, Net& net, vector<OutputSeg>& output) {
 	std::vector<vector<float>> temp_mask_proposals;
 	Rect holeImgRect(0, 0, SrcImg.cols, SrcImg.rows);
 	for (int i = 0; i < nms_result.size(); ++i) {
+
 		int idx = nms_result[i];
 		OutputSeg result;
 		result.id = classIds[idx];
 		result.confidence = confidences[idx];
-		result.box = boxes[idx]&holeImgRect;
+		result.box = boxes[idx] & holeImgRect;
 		temp_mask_proposals.push_back(picked_proposals[idx]);
 		output.push_back(result);
 	}
-	Mat mask_proposals;
-	for (int i = 0; i < temp_mask_proposals.size(); ++i)
-		mask_proposals.push_back(Mat(temp_mask_proposals[i]).t());
-
-	GetMask(mask_proposals, netOutputImg[1], params, SrcImg.size(), output);
-	
+	//clock_t t1, t2, t3;
+	//t1 = clock();
+	for (int i = 0; i < temp_mask_proposals.size(); ++i) {
+		GetMask2(Mat(temp_mask_proposals[i]).t(), netOutputImg[1], params, SrcImg.size(), output[i]);
+	}
+	//t2 = clock();
+	//OLD METHOD
+	//Mat mask_proposals;
+	//for (int i = 0; i < temp_mask_proposals.size(); ++i) 
+	//	mask_proposals.push_back(Mat(temp_mask_proposals[i]).t());
+	//GetMask(mask_proposals, netOutputImg[1], params, SrcImg.size(), output);
+	//t3 = clock();
+	//cout << "new:" << t2 - t1 << "ms,old:" << t3 - t2 <<"ms"<< endl;
 	if (output.size())
 		return true;
 	else
@@ -186,7 +194,6 @@ void YoloSeg::GetMask(const Mat& maskProposals, const Mat& mask_protos, const cv
 	Mat masks = matmulRes.reshape(output.size(), { _segWidth,_segHeight });
 	vector<Mat> maskChannels;
 	split(masks, maskChannels);
-
 	for (int i = 0; i < output.size(); ++i) {
 		Mat dest, mask;
 		//sigmoid
@@ -200,10 +207,60 @@ void YoloSeg::GetMask(const Mat& maskProposals, const Mat& mask_protos, const cv
 		//crop
 		Rect temp_rect = output[i].box;
 		mask = mask(temp_rect) > _maskThreshold;
-		output[i].boxMask =mask;
-
-
+		output[i].boxMask = mask;
 	}
+}
+
+void YoloSeg::GetMask2(const Mat& maskProposals, const Mat& mask_protos, const cv::Vec4d& params, const cv::Size& srcImgShape, OutputSeg& output) {
+
+	Rect temp_rect = output.box;
+	//crop from mask_protos
+	int rang_x = floor((temp_rect.x * params[0] + params[2]) / _netWidth * _segWidth);
+	int rang_y = floor((temp_rect.y * params[1] + params[3]) / _netHeight * _segHeight);
+	int rang_w = ceil(((temp_rect.x + temp_rect.width) * params[0] + params[2]) / _netWidth * _segWidth) - rang_x;
+	int rang_h =ceil(((temp_rect.y + temp_rect.height) * params[1] + params[3]) / _netHeight * _segHeight) - rang_y;
+
+	//如果下面的 mask_protos(roi_rangs).clone()位置报错，说明你的output.box数据不对，或者矩形框就1个像素的，开启下面的注释部分防止报错。
+	//rang_w = MAX(rang_w, 1);
+	//rang_h = MAX(rang_h, 1);
+	//if (rang_x + rang_w > _segWidth) {
+	//	if (_segWidth - rang_x > 0)
+	//		rang_w = _segWidth - rang_x;
+	//	else
+	//		rang_x -= 1;
+	//}
+	//if (rang_y + rang_h > _segHeight) {
+	//	if (_segHeight - rang_y > 0)
+	//		rang_h = _segHeight - rang_y;
+	//	else
+	//		rang_y -= 1;
+	//}
+	vector<Range> roi_rangs;
+	roi_rangs.push_back(Range(0, 1));
+	roi_rangs.push_back(Range::all());
+	roi_rangs.push_back(Range(rang_y, rang_h + rang_y));
+	roi_rangs.push_back(Range(rang_x, rang_w + rang_x));
+
+	//crop
+	Mat temp_mask_protos = mask_protos(roi_rangs).clone();
+	Mat protos = temp_mask_protos.reshape(0, { _segChannels,rang_w * rang_h });
+	Mat matmulRes = (maskProposals * protos).t();
+	Mat masks_feature = matmulRes.reshape(1, { rang_h,rang_w });
+	Mat dest, mask;
+
+	//sigmoid
+	cv::exp(-masks_feature, dest);
+	dest = 1.0 / (1.0 + dest);
+
+	int left = floor((_netWidth / _segWidth * rang_x - params[2]) / params[0]);
+	int top =  floor((_netHeight / _segHeight * rang_y - params[3]) / params[1]);
+	int width =ceil( _netWidth / _segWidth * rang_w / params[0]);
+	int height =ceil( _netHeight / _segHeight * rang_h / params[1]);
+
+	resize(dest, mask, Size(width, height), INTER_NEAREST);
+	mask = mask(temp_rect - Point(left, top)) > _maskThreshold;
+	output.boxMask = mask;
+
 }
 
 void YoloSeg::DrawPred(Mat& img, vector<OutputSeg> result, vector<Scalar> color) {

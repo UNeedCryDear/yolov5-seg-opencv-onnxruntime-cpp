@@ -29,14 +29,16 @@ public:
 		int stride=32,
 		const cv::Scalar& color=cv::Scalar(114,114,114));
 private:
-	void GetMask(const cv::Mat & maskProposals, const cv::Mat & mask_protos, const cv::Vec4d& params, const cv::Size& srcImgShape, std::vector<OutputSeg>& output);
+	void GetMask(const cv::Mat& maskProposals, const cv::Mat& mask_protos, const cv::Vec4d& params, const cv::Size& srcImgShape, std::vector<OutputSeg>& output);
+	void GetMask2(const cv::Mat& maskProposals, const cv::Mat& mask_protos, const cv::Vec4d& params, const cv::Size& srcImgShape, OutputSeg& output);
+
 
 #if(defined YOLO_P6 && YOLO_P6==true)
 	const float _netAnchors[4][6] = { { 19,27, 44,40, 38,94 },{ 96,68, 86,152, 180,137 },{ 140,301, 303,264, 238,542 },{ 436,615, 739,380, 925,792 } };
 
 	const int _netWidth = 1280;  //ONNX图片输入宽度
 	const int _netHeight = 1280; //ONNX图片输入高度
-	const int _segWidth = 320;
+	const int _segWidth = 320;  //_segWidth=_netWidth/mask_ratio
 	const int _segHeight = 320;
 	const int _segChannels = 32;
 	const int _strideSize = 4;  //stride size
@@ -45,7 +47,7 @@ private:
 	
 	const int _netWidth = 640;   //ONNX图片输入宽度
 	const int _netHeight = 640;  //ONNX图片输入高度
-	const int _segWidth = 160;
+	const int _segWidth = 160;    //_segWidth=_netWidth/mask_ratio
 	const int _segHeight = 160;
 	const int _segChannels = 32;
 	const int _strideSize = 3;   //stride size
