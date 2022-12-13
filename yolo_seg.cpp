@@ -13,7 +13,7 @@ bool YoloSeg::ReadModel(Net& net, string& netPath, bool isCuda = false) {
 	//cuda
 	if (isCuda) {
 		net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-		net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA_FP16);
+		net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
 	}
 	//cpu
 	else {
