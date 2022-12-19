@@ -1,12 +1,20 @@
-# yolov5-seg-opencv-dnn-cpp
+# yolov5-seg-opencv-onnxruntime-cpp
 使用opencv-dnn部署yolov5实例分割模型
 基于6.2版本的yolov5:https://github.com/ultralytics/yolov5
 
-**OpenCV>=4.5.0**
-
+**OpenCV>=4.5.0**<br>
+**ONNXRuntime>=?**
 ```
+# for oprncv
 python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx
+# for onnxruntime
+python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx  #static
+python export.py --weights yolov5s-seg.pt  --batch-size bs-number --dynamic --include onnx  #dyamic
 ```
+#### 2022.12.19 更新：
++ **new:** 新增加onnxruntime推理，支持onnx的动态推理和批量推理，避免opencv不支持动态的尴尬境地。
++ onnxruntime的版本最低要求目前未知，我仅仅测试了ort12.0+ort13.0这两个大版本(11.0的应该问题也不大),如果有人测试比这些更低的版本可以运行通过，可以通知我一下。
++ 为了兼容，代码结构有部分变动。
 #### 2022.12.13 更新：
 + 如果你的显卡支持FP16推理的话，可以将模型读取代码中的```DNN_TARGET_CUDA```改成```DNN_TARGET_CUDA_FP16```提升推理速度（虽然是蚊子腿，好歹也是肉（： 
 #### 2022.11.10 更新：
