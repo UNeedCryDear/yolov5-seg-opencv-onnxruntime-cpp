@@ -164,20 +164,7 @@ void GetMask2(const Mat& maskProposals, const Mat& mask_protos, OutputSeg& outpu
 	int height = ceil(net_height / seg_height * rang_h / params[1]);
 
 	resize(dest, mask, Size(width, height), INTER_NEAREST);
-	Rect mask_rect = temp_rect - Point(left, top);
-	if (mask_rect.x + mask_rect.width > mask.cols) {
-		if (mask.cols - mask_rect.x > 0)
-			mask_rect.width = mask.cols - mask_rect.x;
-		else
-			mask_rect.x -= 1;
-	}
-	if (mask_rect.y + mask_rect.height > mask.rows) {
-		if (mask.rows - mask_rect.y > 0)
-			mask_rect.height = mask.rows - mask_rect.y;
-		else
-			mask_rect.y -= 1;
-	}
-	mask = mask(mask_rect) > mask_threshold;
+	mask = mask(temp_rect - Point(left, top)) > mask_threshold;
 	output.boxMask = mask;
 
 }
