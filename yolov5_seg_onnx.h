@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include<memory>
 #include <opencv2/opencv.hpp>
 #include "yolov5_seg_utils.h"
 #include<onnxruntime_cxx_api.h>
@@ -77,6 +78,7 @@ private:
 	Ort::Session* _OrtSession = nullptr;
 	Ort::MemoryInfo _OrtMemoryInfo;
 
+	std::shared_ptr<char> _inputName, _output_name0, _output_name1;
 	std::vector<char*> _inputNodeNames; //输入节点名
 	std::vector<char*> _outputNodeNames;//输出节点名
 

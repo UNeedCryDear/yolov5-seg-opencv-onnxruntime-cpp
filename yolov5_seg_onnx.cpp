@@ -43,8 +43,8 @@ bool YoloSegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cudaI
 		Ort::AllocatorWithDefaultOptions allocator;
 		//init input
 		_inputNodesNum = _OrtSession->GetInputCount();
-		auto temp_input_name0 = _OrtSession->GetInputNameAllocated(0, allocator);
-		_inputNodeNames.push_back(temp_input_name0.get());
+		_inputName =std::move( _OrtSession->GetInputNameAllocated(0, allocator));
+		_inputNodeNames.push_back(_inputName.get());
 		cout << _inputNodeNames[0] << endl;
 		Ort::TypeInfo inputTypeInfo = _OrtSession->GetInputTypeInfo(0);
 		auto input_tensor_info = inputTypeInfo.GetTensorTypeAndShapeInfo();
@@ -69,22 +69,22 @@ bool YoloSegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cudaI
 			return false;
 		}
 
-		auto temp_output_name0 = _OrtSession->GetOutputNameAllocated(0, allocator);
-		auto temp_output_name1 = _OrtSession->GetOutputNameAllocated(1, allocator);
+		_output_name0 =std::move( _OrtSession->GetOutputNameAllocated(0, allocator));
+		_output_name1 = std::move(_OrtSession->GetOutputNameAllocated(1, allocator));
 		Ort::TypeInfo type_info_output0(nullptr);
 		Ort::TypeInfo type_info_output1(nullptr);
-		if (strcmp(temp_output_name0.get(), temp_output_name1.get()) < 0)  //make sure "output0" is in front of  "output1"
+		if (strcmp(_output_name0.get(), _output_name1.get()) < 0)  //make sure "output0" is in front of  "output1"
 		{
 			type_info_output0 = _OrtSession->GetOutputTypeInfo(0);  //output0
 			type_info_output1 = _OrtSession->GetOutputTypeInfo(1);  //output1
-			_outputNodeNames.push_back(temp_output_name0.get());
-			_outputNodeNames.push_back(temp_output_name1.get());
+			_outputNodeNames.push_back(_output_name0.get());
+			_outputNodeNames.push_back(_output_name1.get());
 		}
 		else {
 			type_info_output0 = _OrtSession->GetOutputTypeInfo(1);  //output0
 			type_info_output1 = _OrtSession->GetOutputTypeInfo(0);  //output1
-			_outputNodeNames.push_back(temp_output_name1.get());
-			_outputNodeNames.push_back(temp_output_name0.get());
+			_outputNodeNames.push_back(_output_name1.get());
+			_outputNodeNames.push_back(_output_name0.get());
 		}
 
 		auto tensor_info_output0 = type_info_output0.GetTensorTypeAndShapeInfo();
@@ -119,12 +119,16 @@ bool YoloSegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cudaI
 			input_tensors.push_back(Ort::Value::CreateTensor<float>(
 				_OrtMemoryInfo, temp, input_tensor_length, _inputTensorShape.data(),
 				_inputTensorShape.size()));
-			output_tensors = _OrtSession->Run(Ort::RunOptions{ nullptr },
-				_inputNodeNames.data(),
-				input_tensors.data(),
-				_inputNodeNames.size(),
-				_outputNodeNames.data(),
-				_outputNodeNames.size());
+			for (int i = 0; i < 3; ++i) {
+				output_tensors = _OrtSession->Run(Ort::RunOptions{ nullptr },
+					_inputNodeNames.data(),
+					input_tensors.data(),
+					_inputNodeNames.size(),
+					_outputNodeNames.data(),
+					_outputNodeNames.size());
+			}
+
+			delete[]temp;
 		}
 	}
 	catch (const std::exception&) {
