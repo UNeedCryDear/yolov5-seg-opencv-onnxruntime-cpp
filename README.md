@@ -12,7 +12,7 @@ python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx  #stati
 python export.py --weights yolov5s-seg.pt  --batch-size bs-number --dynamic --include onnx  #dyamic
 ```
 #### 2023.01.11 更新：
-+ 目前opencv4.7.0的版本会有问题（https://github.com/opencv/opencv/issues/23080)，如果你是opencv4.7.0的版本，你需要在```net.forward()``` 前面加上```net.enableWinograd(false);```来关闭Winograd加速。
++ 目前opencv4.7.0的版本会有问题（https://github.com/opencv/opencv/issues/23080) ，如果你是opencv4.7.0的版本，你需要在```net.forward()``` 前面加上```net.enableWinograd(false);```来关闭Winograd加速。
 
 #### 2022.12.19 更新：
 + **new:** 新增加onnxruntime推理，支持onnx的动态推理和批量推理，避免opencv不支持动态的尴尬境地。
