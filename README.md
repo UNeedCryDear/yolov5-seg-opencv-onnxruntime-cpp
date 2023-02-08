@@ -6,7 +6,7 @@
 **ONNXRuntime>=?**
 ```
 # for oprncv
-python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx
+python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx --opset 12
 # for onnxruntime
 python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx  #static
 python export.py --weights yolov5s-seg.pt  --batch-size bs-number --dynamic --include onnx  #dyamic
