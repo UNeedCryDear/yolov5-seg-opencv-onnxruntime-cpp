@@ -4,15 +4,16 @@ using namespace cv;
 using namespace cv::dnn;
 
 bool YoloSeg::ReadModel(Net& net, string& netPath, bool isCuda = false) {
-	if (!CheckParams(_netHeight, _netWidth, _netStride, _strideSize))
-		return false;
 	try {
 		net = readNet(netPath);
+#if CV_VERSION_MAJOR==4 &&CV_VERSION_MINOR==7&&CV_VERSION_REVISION==0
+		net.enableWinograd(false);  //bug of opencv4.7.x in AVX only platform ,https://github.com/opencv/opencv/pull/23112 and https://github.com/opencv/opencv/issues/23080 
+		//net.enableWinograd(true);		//If your CPU supports AVX2, you can set it true to speed up
+#endif
 	}
 	catch (const std::exception&) {
 		return false;
 	}
-
 	if (isCuda) {
 		//cuda
 		net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
@@ -60,51 +61,43 @@ bool YoloSeg::Detect(Mat& srcImg, Net& net, vector<OutputSeg>& output) {
 	std::vector<float> confidences;//结果每个id对应置信度数组
 	std::vector<cv::Rect> boxes;//每个id矩形框
 	std::vector<vector<float>> picked_proposals;  //output0[:,:, 5 + _className.size():net_width]===> for mask
-
-	//float ratio_h = (float)netInputImg.rows / _netHeight;
-	//float ratio_w = (float)netInputImg.cols / _netWidth;
 	int net_width = _className.size() + 5 + _segChannels;
+	int out0_width= net_output_img[0].size[2];
+	
+	assert(net_width == out0_width, "Error Wrong number of _className or _segChannels");  //模型类别数目不对或者_segChannels设置错误
+	int net_height = net_output_img[0].size[1];
 	float* pdata = (float*)net_output_img[0].data;
-	for (int stride = 0; stride < _strideSize; stride++) {    //stride
-		int grid_x = (int)(_netWidth / _netStride[stride]);
-		int grid_y = (int)(_netHeight / _netStride[stride]);
-		for (int anchor = 0; anchor < 3; anchor++) {	//anchors
-			//const float anchor_w = _netAnchors[stride][anchor * 2];
-			//const float anchor_h = _netAnchors[stride][anchor * 2 + 1];
-			for (int i = 0; i < grid_y; ++i) {
-				for (int j = 0; j < grid_x; ++j) {
-					float box_score = pdata[4]; ;//box-confidence
-					if (box_score >= _boxThreshold) {
-						cv::Mat scores(1, _className.size(), CV_32FC1, pdata + 5);
-						Point classIdPoint;
-						double max_class_socre;
-						minMaxLoc(scores, 0, &max_class_socre, 0, &classIdPoint);
-						max_class_socre = (float)max_class_socre;
-						if (max_class_socre >= _classThreshold) {
+	for (int r = 0; r < net_height; r++) {    //lines
+		float box_score = pdata[4];
+		if (box_score >= _classThreshold) {
+			cv::Mat scores(1, _className.size(), CV_32FC1, pdata + 5);
+			Point classIdPoint;
+			double max_class_socre;
+			minMaxLoc(scores, 0, &max_class_socre, 0, &classIdPoint);
+			max_class_socre = (float)max_class_socre;
+			if (max_class_socre >= _classThreshold) {
 
-							vector<float> temp_proto(pdata + 5 + _className.size(), pdata + net_width);
-							picked_proposals.push_back(temp_proto);
-							//rect [x,y,w,h]
-							float x = (pdata[0] - params[2]) / params[0];  //x
-							float y = (pdata[1] - params[3]) / params[1];  //y
-							float w = pdata[2] / params[0];  //w
-							float h = pdata[3] / params[1];  //h
-							int left = MAX(int(x - 0.5 * w+0.5) , 0);
-							int top = MAX(int(y - 0.5 * h+0.5) , 0);
-							class_ids.push_back(classIdPoint.x);
-							confidences.push_back(max_class_socre * box_score);
-							boxes.push_back(Rect(left, top, int(w+0.5), int(h+0.5 )));
-						}
-					}
-					pdata += net_width;//下一行
-				}
+				vector<float> temp_proto(pdata + 5 + _className.size(), pdata + net_width);
+				picked_proposals.push_back(temp_proto);
+				//rect [x,y,w,h]
+				float x = (pdata[0] - params[2]) / params[0];  //x
+				float y = (pdata[1] - params[3]) / params[1];  //y
+				float w = pdata[2] / params[0];  //w
+				float h = pdata[3] / params[1];  //h
+				int left = MAX(int(x - 0.5 * w + 0.5), 0);
+				int top = MAX(int(y - 0.5 * h + 0.5), 0);
+				class_ids.push_back(classIdPoint.x);
+				confidences.push_back(max_class_socre * box_score);
+				boxes.push_back(Rect(left, top, int(w + 0.5), int(h + 0.5)));
 			}
 		}
+		pdata += net_width;//下一行
+
 	}
 
 	//NMS
 	vector<int> nms_result;
-	NMSBoxes(boxes, confidences, _nmsScoreThreshold, _nmsThreshold, nms_result);
+	cv::dnn::NMSBoxes(boxes, confidences, _classThreshold, _nmsThreshold, nms_result);
 	std::vector<vector<float>> temp_mask_proposals;
 	Rect holeImgRect(0, 0, srcImg.cols, srcImg.rows);
 	for (int i = 0; i < nms_result.size(); ++i) {
@@ -125,7 +118,7 @@ bool YoloSeg::Detect(Mat& srcImg, Net& net, vector<OutputSeg>& output) {
 		GetMask2(Mat(temp_mask_proposals[i]).t(), net_output_img[1], output[i], mask_params);
 	}
 
-	
+
 	//******************** ****************
 	// 老版本的方案，如果上面在开启我注释的部分之后还一直报错，建议使用这个。
 	// If the GetMask2() still reports errors , it is recommended to use GetMask().

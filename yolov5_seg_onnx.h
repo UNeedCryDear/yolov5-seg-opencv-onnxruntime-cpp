@@ -51,7 +51,7 @@ private:
 	const int _segWidth = 320;  //_segWidth=_netWidth/mask_ratio
 	const int _segHeight = 320;
 	const int _segChannels = 32;
-	const int _strideSize = 4;  //stride size
+	
 #else
 	//const float _netAnchors[3][6] = { { 10,13, 16,30, 33,23 },{ 30,61, 62,45, 59,119 },{ 116,90, 156,198, 373,326 } };
 	const int _netWidth = 640;   //ONNX-net-input-width
@@ -59,18 +59,16 @@ private:
 	const int _segWidth = 160;    //_segWidth=_netWidth/mask_ratio
 	const int _segHeight = 160;
 	const int _segChannels = 32;
-	const int _strideSize = 3;   //stride size
+
 #endif // YOLO_P6
 
 	int _batchSize = 1;  //if multi-batch,set this
 	bool _isDynamicShape = false;//onnx support dynamic shape
 
-	const int _netStride[4] = { 8, 16,32,64 };
-	float _boxThreshold = 0.25;
+
 	float _classThreshold = 0.5;
 	float _nmsThreshold = 0.45;
 	float _maskThreshold = 0.5;
-	float _nmsScoreThreshold = _boxThreshold * _classThreshold;
 
 	//ONNXRUNTIME	
 	Ort::Env _OrtEnv = Ort::Env(OrtLoggingLevel::ORT_LOGGING_LEVEL_ERROR, "Yolov5-Seg");

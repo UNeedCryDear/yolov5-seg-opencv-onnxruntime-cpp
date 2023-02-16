@@ -32,13 +32,10 @@ public:
 	const int _strideSize = 3;   //stride size
 #endif // YOLO_P6
 	
-
-	const int _netStride[4] = { 8, 16,32,64 };
-	float _boxThreshold = 0.25;
-	float _classThreshold = 0.5;
+	float _classThreshold = 0.25;
 	float _nmsThreshold = 0.45;
 	float _maskThreshold = 0.5;
-	float _nmsScoreThreshold = _boxThreshold * _classThreshold;
+
 
 	//类别名，自己的模型需要修改此项
 	std::vector<std::string> _className = { "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
