@@ -3,7 +3,7 @@
 基于6.2版本的yolov5:https://github.com/ultralytics/yolov5
 
 **OpenCV>=4.5.0**<br>
-**ONNXRuntime>=?**
+**ONNXRuntime>=1.9.0,** (Maybe the earlier version of onnxruntime is also possible, but I didn't test it)
 ```
 # for oprncv
 python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx --opset 12

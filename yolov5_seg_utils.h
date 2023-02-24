@@ -4,6 +4,7 @@
 #include<opencv2/opencv.hpp>
 
 #define YOLO_P6 false //是否使用P6模型
+#define ORT_OLD_VISON 12  //ort1.12.0 之前的版本为旧版本API
 
 struct OutputSeg {
 	int id;             //结果类别id
