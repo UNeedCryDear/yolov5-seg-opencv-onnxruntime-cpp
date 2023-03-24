@@ -185,8 +185,8 @@ int YoloSegOnnx::Preprocessing(const std::vector<cv::Mat>& srcImgs, std::vector<
 		}
 	}
 
-	int lack_num = srcImgs.size() % _batchSize;
-	if (lack_num != 0) {
+	int lack_num = _batchSize- srcImgs.size();
+	if (lack_num > 0) {
 		for (int i = 0; i < lack_num; ++i) {
 			Mat temp_img = Mat::zeros(input_size, CV_8UC3);
 			Vec4d temp_param = { 1,1,0,0 };
