@@ -120,7 +120,7 @@ bool YoloSeg::Detect(Mat& srcImg, Net& net, vector<OutputSeg>& output) {
 
 
 	//******************** ****************
-	// 老版本的方案，如果上面在开启我注释的部分之后还一直报错，建议使用这个。
+	// 老版本的方案，如果上面GetMask2出错，建议使用这个。
 	// If the GetMask2() still reports errors , it is recommended to use GetMask().
 	// Mat mask_proposals;
 	//for (int i = 0; i < temp_mask_proposals.size(); ++i)

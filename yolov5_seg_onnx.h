@@ -13,7 +13,7 @@
 class YoloSegOnnx {
 public:
 	YoloSegOnnx() :_OrtMemoryInfo(Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPUOutput)) {};
-	~YoloSegOnnx() {};// delete _OrtMemoryInfo;
+	~YoloSegOnnx() {};
 
 
 public:
