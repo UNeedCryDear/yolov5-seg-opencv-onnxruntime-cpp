@@ -13,7 +13,9 @@
 class YoloSegOnnx {
 public:
 	YoloSegOnnx() :_OrtMemoryInfo(Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPUOutput)) {};
+
 	~YoloSegOnnx() {};
+
 
 
 public:
@@ -44,38 +46,24 @@ private:
 		return std::accumulate(v.begin(), v.end(), 1, std::multiplies<T>());
 	};
 	int Preprocessing(const std::vector<cv::Mat>& SrcImgs, std::vector<cv::Mat>& OutSrcImgs, std::vector<cv::Vec4d>& params);
-#if(defined YOLO_P6 && YOLO_P6==true)
-	//const float _netAnchors[4][6] = { { 19,27, 44,40, 38,94 },{ 96,68, 86,152, 180,137 },{ 140,301, 303,264, 238,542 },{ 436,615, 739,380, 925,792 } };
-	const int _netWidth = 1280;  //ONNX图片输入宽度
-	const int _netHeight = 1280; //ONNX图片输入高度
-	const int _segWidth = 320;  //_segWidth=_netWidth/mask_ratio
-	const int _segHeight = 320;
-	const int _segChannels = 32;
-	
-#else
-	//const float _netAnchors[3][6] = { { 10,13, 16,30, 33,23 },{ 30,61, 62,45, 59,119 },{ 116,90, 156,198, 373,326 } };
+
+
 	const int _netWidth = 640;   //ONNX-net-input-width
 	const int _netHeight = 640;  //ONNX-net-input-height
-	const int _segWidth = 160;    //_segWidth=_netWidth/mask_ratio
-	const int _segHeight = 160;
-	const int _segChannels = 32;
-
-#endif // YOLO_P6
-
 	int _batchSize = 1;  //if multi-batch,set this
 	bool _isDynamicShape = false;//onnx support dynamic shape
 
-
 	float _classThreshold = 0.5;
 	float _nmsThreshold = 0.45;
-	float _maskThreshold = 0.5;
+	float _maskThreshold = 0.5; 
 
-	//ONNXRUNTIME	
 	Ort::Env _OrtEnv = Ort::Env(OrtLoggingLevel::ORT_LOGGING_LEVEL_ERROR, "Yolov5-Seg");
 	Ort::SessionOptions _OrtSessionOptions = Ort::SessionOptions();
 	Ort::Session* _OrtSession = nullptr;
 	Ort::MemoryInfo _OrtMemoryInfo;
-
+	Ort::AllocatorWithDefaultOptions _OrtAllocator;
+	Ort::RunOptions _OrtRunOptions{ nullptr };
+	OrtStatus* _OrtStatus{nullptr};
 #if ORT_API_VERSION < ORT_OLD_VISON
 
 	char* _inputName, * _output_name0, * _output_name1;

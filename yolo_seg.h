@@ -20,27 +20,8 @@ public:
 	*/
 	bool Detect(cv::Mat& srcImg, cv::dnn::Net& net, std::vector<OutputSeg>& output);
 
-#if(defined YOLO_P6 && YOLO_P6==true)
-
-	const int _netWidth = 1280;  //ONNX图片输入宽度
-	const int _netHeight = 1280; //ONNX图片输入高度
-	const int _segWidth = 320;  //_segWidth=_netWidth/mask_ratio
-	const int _segHeight = 320;
-	const int _segChannels = 32;
-#else
-
-	const int _netWidth = 640;   //ONNX图片输入宽度
-	const int _netHeight = 640;  //ONNX图片输入高度
-	const int _segWidth = 160;    //_segWidth=_netWidth/mask_ratio
-	const int _segHeight = 160;
-	const int _segChannels = 32;
-
-#endif // YOLO_P6
-
-	float _classThreshold = 0.25;
-	float _nmsThreshold = 0.45;
-	float _maskThreshold = 0.5;
-
+	 int _netWidth = 640;   //ONNX图片输入宽度
+	 int _netHeight = 640;  //ONNX图片输入高度
 public:
 	std::vector<std::string> _className = { "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
 		"fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
@@ -51,4 +32,8 @@ public:
 		"potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
 		"microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
 		"hair drier", "toothbrush" };//类别名，换成自己的模型需要修改此项
+private:
+	float _classThreshold = 0.25;
+	float _nmsThreshold = 0.45;
+	float _maskThreshold = 0.5;
 };

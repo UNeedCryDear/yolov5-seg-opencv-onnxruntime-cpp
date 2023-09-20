@@ -11,6 +11,8 @@ bool YoloSegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cudaI
 	if (_batchSize < 1) _batchSize = 1;
 	try
 	{
+		if (!CheckModelPath(modelPath))
+			return false;
 		std::vector<std::string> available_providers = GetAvailableProviders();
 		auto cuda_available = std::find(available_providers.begin(), available_providers.end(), "CUDAExecutionProvider");
 		if (isCuda && (cuda_available == available_providers.end()))
@@ -25,7 +27,7 @@ bool YoloSegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cudaI
 			cudaOption.device_id = cudaID;
 			_OrtSessionOptions.AppendExecutionProvider_CUDA(cudaOption);
 #else
-			OrtStatus* status = OrtSessionOptionsAppendExecutionProvider_CUDA(_OrtSessionOptions, cudaID);
+			_OrtStatus = OrtSessionOptionsAppendExecutionProvider_CUDA(_OrtSessionOptions, cudaID);
 #endif
 		}
 		else
@@ -42,15 +44,15 @@ bool YoloSegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cudaI
 		_OrtSession = new Ort::Session(_OrtEnv, modelPath.c_str(), _OrtSessionOptions);
 #endif
 
-		Ort::AllocatorWithDefaultOptions allocator;
+		
 		//init input
 		_inputNodesNum = _OrtSession->GetInputCount();
 
 #if ORT_API_VERSION < ORT_OLD_VISON
-		_inputName = _OrtSession->GetInputName(0, allocator);
+		_inputName = _OrtSession->GetInputName(0, _OrtAllocator);
 		_inputNodeNames.push_back(_inputName);
 #else
-		_inputName = std::move(_OrtSession->GetInputNameAllocated(0, allocator));
+		_inputName = std::move(_OrtSession->GetInputNameAllocated(0, _OrtAllocator));
 		_inputNodeNames.push_back(_inputName.get());
 #endif
 
@@ -77,11 +79,11 @@ bool YoloSegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cudaI
 			return false;
 		}
 #if ORT_API_VERSION < ORT_OLD_VISON
-		_output_name0 = _OrtSession->GetOutputName(0, allocator);
-		_output_name1 = _OrtSession->GetOutputName(1, allocator);
+		_output_name0 = _OrtSession->GetOutputName(0, _OrtAllocator);
+		_output_name1 = _OrtSession->GetOutputName(1, _OrtAllocator);
 #else
-		_output_name0 = std::move(_OrtSession->GetOutputNameAllocated(0, allocator));
-		_output_name1 = std::move(_OrtSession->GetOutputNameAllocated(1, allocator));
+		_output_name0 = std::move(_OrtSession->GetOutputNameAllocated(0, _OrtAllocator));
+		_output_name1 = std::move(_OrtSession->GetOutputNameAllocated(1, _OrtAllocator));
 #endif
 		Ort::TypeInfo type_info_output0(nullptr);
 		Ort::TypeInfo type_info_output1(nullptr);
@@ -149,7 +151,7 @@ bool YoloSegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cudaI
 				_OrtMemoryInfo, temp, input_tensor_length, _inputTensorShape.data(),
 				_inputTensorShape.size()));
 			for (int i = 0; i < 3; ++i) {
-				output_tensors = _OrtSession->Run(Ort::RunOptions{ nullptr },
+				output_tensors = _OrtSession->Run(_OrtRunOptions,
 					_inputNodeNames.data(),
 					input_tensors.data(),
 					_inputNodeNames.size(),
@@ -219,7 +221,7 @@ bool YoloSegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<std
 	std::vector<Ort::Value> output_tensors;
 	input_tensors.push_back(Ort::Value::CreateTensor<float>(_OrtMemoryInfo, (float*)blob.data, input_tensor_length, _inputTensorShape.data(), _inputTensorShape.size()));
 
-	output_tensors = _OrtSession->Run(Ort::RunOptions{ nullptr },
+	output_tensors = _OrtSession->Run(_OrtRunOptions,
 		_inputNodeNames.data(),
 		input_tensors.data(),
 		_inputNodeNames.size(),
@@ -236,9 +238,7 @@ bool YoloSegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<std
 	vector<int> mask_protos_shape = { 1,(int)_outputMaskTensorShape[1],(int)_outputMaskTensorShape[2],(int)_outputMaskTensorShape[3] };
 	int mask_protos_length = VectorProduct(mask_protos_shape);
 	int64_t one_output_length = VectorProduct(_outputTensorShape) / _outputTensorShape[0];
-	int net_width = _className.size() + 5 + _segChannels;
-	int out0_width  = _outputTensorShape[2];
-	assert(net_width == out0_width, "Error Wrong number of _className or _segChannels");  //模型类别数目不对或者_segChannels设置错误
+	int net_width = _outputTensorShape[2];
 	int net_height = _outputTensorShape[1];
 	for (int img_index = 0; img_index < srcImgs.size(); ++img_index) {
 		std::vector<int> class_ids;//结果id数组
@@ -289,6 +289,9 @@ bool YoloSegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<std
 		MaskParams mask_params;
 		mask_params.params = params[img_index];
 		mask_params.srcImgShape = srcImgs[img_index].size();
+		mask_params.netHeight = _netHeight;
+		mask_params.netWidth = _netWidth;
+		mask_params.maskThreshold = _maskThreshold;
 		Mat mask_protos = Mat(mask_protos_shape, CV_32F, output_tensors[1].GetTensorMutableData<float>() + img_index * mask_protos_length);
 		for (int i = 0; i < temp_mask_proposals.size(); ++i) {
 			GetMask2(Mat(temp_mask_proposals[i]).t(), mask_protos, temp_output[i], mask_params);
@@ -299,9 +302,10 @@ bool YoloSegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<std
 		// 老版本的方案，如果上面在开启我注释的部分之后还一直报错，建议使用这个。
 		// If the GetMask2() still reports errors , it is recommended to use GetMask().
 		// Mat mask_proposals;
-		//for (int i = 0; i < temp_mask_proposals.size(); ++i)
+		// for (int i = 0; i < temp_mask_proposals.size(); ++i) {
 		//	mask_proposals.push_back(Mat(temp_mask_proposals[i]).t());
-		//GetMask(mask_proposals, mask_protos, output, mask_params);
+		//}
+		//GetMask(mask_proposals, mask_protos, temp_output, mask_params);
 		//*****************************************************/
 		output.push_back(temp_output);
 

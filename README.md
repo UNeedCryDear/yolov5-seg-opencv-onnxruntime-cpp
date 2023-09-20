@@ -13,6 +13,10 @@ python export.py --weights yolov5s-seg.pt  --batch-size bs-number --dynamic --in
 ```
 #### 2023.01.11 更新：
 + 目前opencv4.7.0的版本会有问题（https://github.com/opencv/opencv/issues/23080) ，如果你是opencv4.7.0的版本，你需要在```net.forward()``` 前面加上```net.enableWinograd(false);```来关闭Winograd加速。
+#### 2023.09.20更新<br>
++ 新增模型路径检查，部分issue查了半天，发现模型路径不对。
++ 计算mask部分bug修复，此前如果输入大小非640的话，需要同时设置头文件和结构体才能完成检测，但是大部分人只修改了一个地方，目前优化这部分内容，只需要修头文件中的定义即可。另外将segHeight和segWidth设置为从网络输出中读取，这样如果mask-ratio不是4倍的话，可以不需要修改这两个参数值。
++ 修复```GetMask2()```中可能导致越界的问题。<br>
 
 #### 2022.12.19 更新：
 + **new:** 新增加onnxruntime推理，支持onnx的动态推理和批量推理，避免opencv不支持动态的尴尬境地。

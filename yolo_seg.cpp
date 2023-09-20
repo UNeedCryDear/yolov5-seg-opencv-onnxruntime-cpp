@@ -5,6 +5,8 @@ using namespace cv::dnn;
 
 bool YoloSeg::ReadModel(Net& net, string& netPath, bool isCuda = false) {
 	try {
+		if (!CheckModelPath(netPath))
+			return false;
 		net = readNet(netPath);
 #if CV_VERSION_MAJOR==4 &&CV_VERSION_MINOR==7&&CV_VERSION_REVISION==0
 		net.enableWinograd(false);  //bug of opencv4.7.x in AVX only platform ,https://github.com/opencv/opencv/pull/23112 and https://github.com/opencv/opencv/issues/23080 
@@ -61,10 +63,7 @@ bool YoloSeg::Detect(Mat& srcImg, Net& net, vector<OutputSeg>& output) {
 	std::vector<float> confidences;//结果每个id对应置信度数组
 	std::vector<cv::Rect> boxes;//每个id矩形框
 	std::vector<vector<float>> picked_proposals;  //output0[:,:, 5 + _className.size():net_width]===> for mask
-	int net_width = _className.size() + 5 + _segChannels;
-	int out0_width= net_output_img[0].size[2];
-	
-	assert(net_width == out0_width, "Error Wrong number of _className or _segChannels");  //模型类别数目不对或者_segChannels设置错误
+	int net_width = net_output_img[0].size[2];
 	int net_height = net_output_img[0].size[1];
 	float* pdata = (float*)net_output_img[0].data;
 	for (int r = 0; r < net_height; r++) {    //lines
@@ -114,6 +113,9 @@ bool YoloSeg::Detect(Mat& srcImg, Net& net, vector<OutputSeg>& output) {
 	MaskParams mask_params;
 	mask_params.params = params;
 	mask_params.srcImgShape = srcImg.size();
+	mask_params.maskThreshold = _maskThreshold;
+	mask_params.netHeight = _netWidth;
+	mask_params.netWidth = _netWidth;
 	for (int i = 0; i < temp_mask_proposals.size(); ++i) {
 		GetMask2(Mat(temp_mask_proposals[i]).t(), net_output_img[1], output[i], mask_params);
 	}
@@ -122,9 +124,10 @@ bool YoloSeg::Detect(Mat& srcImg, Net& net, vector<OutputSeg>& output) {
 	//******************** ****************
 	// 老版本的方案，如果上面GetMask2出错，建议使用这个。
 	// If the GetMask2() still reports errors , it is recommended to use GetMask().
-	// Mat mask_proposals;
-	//for (int i = 0; i < temp_mask_proposals.size(); ++i)
+	//Mat mask_proposals;
+	//for (int i = 0; i < temp_mask_proposals.size(); ++i) {
 	//	mask_proposals.push_back(Mat(temp_mask_proposals[i]).t());
+	//}
 	//GetMask(mask_proposals, net_output_img[1], output, mask_params);
 	//*****************************************************/
 
