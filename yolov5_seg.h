@@ -1,13 +1,13 @@
 #pragma once
 #include<iostream>
 #include<opencv2/opencv.hpp>
-#include "yolov5_seg_utils.h"
+#include "yolov5_utils.h"
 
-class YoloSeg {
+class Yolov5Seg {
 public:
-	YoloSeg() {
+	Yolov5Seg() {
 	}
-	~YoloSeg() {}
+	~Yolov5Seg() {}
 	/** \brief Read onnx-model
 	* \param[out] read onnx file into cv::dnn::Net
 	* \param[in] modelPath:onnx-model path

@@ -10,11 +10,11 @@
 
 
 
-class Yolov5SegOnnx {
+class Yolov5Onnx {
 public:
-	Yolov5SegOnnx() :_OrtMemoryInfo(Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPUOutput)) {};
+	Yolov5Onnx() :_OrtMemoryInfo(Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPUOutput)) {};
 
-	~Yolov5SegOnnx() {};
+	~Yolov5Onnx() {};
 
 
 
@@ -57,7 +57,7 @@ private:
 	float _nmsThreshold = 0.45;
 	float _maskThreshold = 0.5; 
 
-	Ort::Env _OrtEnv = Ort::Env(OrtLoggingLevel::ORT_LOGGING_LEVEL_ERROR, "Yolov5-Seg");
+	Ort::Env _OrtEnv = Ort::Env(OrtLoggingLevel::ORT_LOGGING_LEVEL_ERROR, "Yolov5");
 	Ort::SessionOptions _OrtSessionOptions = Ort::SessionOptions();
 	Ort::Session* _OrtSession = nullptr;
 	Ort::MemoryInfo _OrtMemoryInfo;
@@ -66,9 +66,9 @@ private:
 	OrtStatus* _OrtStatus{nullptr};
 #if ORT_API_VERSION < ORT_OLD_VISON
 
-	char* _inputName, * _output_name0, * _output_name1;
+	char* _inputName, * _output_name0;// , * _output_name1;
 #else
-	std::shared_ptr<char> _inputName, _output_name0, _output_name1;
+	std::shared_ptr<char> _inputName, _output_name0;// , _output_name1;
 #endif
 	std::vector<char*> _inputNodeNames; //输入节点名
 	std::vector<char*> _outputNodeNames;//输出节点名
@@ -81,7 +81,7 @@ private:
 	std::vector<int64_t> _inputTensorShape; //输入张量shape
 
 	std::vector<int64_t> _outputTensorShape;
-	std::vector<int64_t> _outputMaskTensorShape;
+	//std::vector<int64_t> _outputMaskTensorShape;
 public:
 	std::vector<std::string> _className = {
 		"person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",

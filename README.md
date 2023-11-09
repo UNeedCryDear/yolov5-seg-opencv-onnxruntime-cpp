@@ -11,12 +11,19 @@ python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx --opset
 python export.py --weights yolov5s-seg.pt --img [640,640] --include onnx  #static
 python export.py --weights yolov5s-seg.pt  --batch-size bs-number --dynamic --include onnx  #dyamic
 ```
-#### 2023.01.11 更新：
-+ 目前opencv4.7.0的版本会有问题（https://github.com/opencv/opencv/issues/23080) ，如果你是opencv4.7.0的版本，你需要在```net.forward()``` 前面加上```net.enableWinograd(false);```来关闭Winograd加速。
+#### 2023.11.09更新<br>
++ 将yolov5的opencv推理合并进来，并且由于之前的其他作者的onnxruntime的部署由于ORT的版本更新导致出现问题，所以我这词更新新增onnxruntime推理，以适应新版本的ORT。
++ 修复此pr中提到的一些问题[https://github.com/UNeedCryDear/yolov8-opencv-onnxruntime-cpp/pull/30]，此bug会导致mask与box大小可能会差几个像素从而导致出现一些问题（如果用的时候没有注意的话），本次更新之后会将其缩放到一致大小。
++ 新增视频流推理的demo，这是由于发现很多初学者调用视频的时候总是每一张图片都去读取一次模型，所以本次更新一起加上去。
+
+
 #### 2023.09.20更新<br>
 + 新增模型路径检查，部分issue查了半天，发现模型路径不对。
 + 计算mask部分bug修复，此前如果输入大小非640的话，需要同时设置头文件和结构体才能完成检测，但是大部分人只修改了一个地方，目前优化这部分内容，只需要修头文件中的定义即可。另外将segHeight和segWidth设置为从网络输出中读取，这样如果mask-ratio不是4倍的话，可以不需要修改这两个参数值。
 + 修复```GetMask2()```中可能导致越界的问题。<br>
+#### 2023.01.11 更新：
++ 目前opencv4.7.0的版本会有问题（https://github.com/opencv/opencv/issues/23080) ，如果你是opencv4.7.0的版本，你需要在```net.forward()``` 前面加上```net.enableWinograd(false);```来关闭Winograd加速。
+
 
 #### 2022.12.19 更新：
 + **new:** 新增加onnxruntime推理，支持onnx的动态推理和批量推理，避免opencv不支持动态的尴尬境地。

@@ -1,5 +1,5 @@
 #pragma once
-#include "yolov5_seg_utils.h"
+#include "yolov5_utils.h"
 using namespace cv;
 using namespace std;
 bool CheckParams(int netHeight, int netWidth, const int* netStride, int strideSize) {
@@ -175,11 +175,14 @@ void GetMask2(const Mat& maskProposals, const Mat& maskProtos, OutputSeg& output
 	Rect mask_rect = temp_rect - Point(left, top);
 	mask_rect &= Rect(0, 0, width, height);
 	mask = mask(mask_rect) > mask_threshold;
+	if (mask.rows != temp_rect.height || mask.cols != temp_rect.width) { //https://github.com/UNeedCryDear/yolov8-opencv-onnxruntime-cpp/pull/30
+		resize(mask, mask, temp_rect.size(), INTER_NEAREST);
+	}
 	output.boxMask = mask;
 
 }
 
-void DrawPred(Mat& img, vector<OutputSeg> result, std::vector<std::string> classNames, vector<Scalar> color) {
+void DrawPred(Mat& img, vector<OutputSeg> result, std::vector<std::string> classNames, vector<Scalar> color, bool isVideo) {
 	Mat mask = img.clone();
 	for (int i = 0; i < result.size(); i++) {
 		int left, top;
@@ -187,7 +190,8 @@ void DrawPred(Mat& img, vector<OutputSeg> result, std::vector<std::string> class
 		top = result[i].box.y;
 		int color_num = i;
 		rectangle(img, result[i].box, color[result[i].id], 2, 8);
-		mask(result[i].box).setTo(color[result[i].id], result[i].boxMask);
+		if (result[i].boxMask.rows && result[i].boxMask.cols > 0)
+			mask(result[i].box).setTo(color[result[i].id], result[i].boxMask);
 		string label = classNames[result[i].id] + ":" + to_string(result[i].confidence);
 		int baseLine;
 		Size labelSize = getTextSize(label, FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
@@ -197,8 +201,8 @@ void DrawPred(Mat& img, vector<OutputSeg> result, std::vector<std::string> class
 	}
 	addWeighted(img, 0.5, mask, 0.5, 0, img); //add mask to src
 	imshow("1", img);
-	//imwrite("out.bmp", img);
-	waitKey();
-	//destroyAllWindows();
+	if (!isVideo )
+		waitKey(); //video waiKey not in here
 
 }
+

@@ -1,13 +1,13 @@
-#include"yolo_seg.h"
+#include"yolov5_seg.h"
 using namespace std;
 using namespace cv;
 using namespace cv::dnn;
 
-bool YoloSeg::ReadModel(Net& net, string& netPath, bool isCuda = false) {
+bool Yolov5Seg::ReadModel(Net& net, string& netPath, bool isCuda = false) {
 	try {
 		if (!CheckModelPath(netPath))
 			return false;
-		net = readNet(netPath);
+		net = readNetFromONNX(netPath);
 #if CV_VERSION_MAJOR==4 &&CV_VERSION_MINOR==7&&CV_VERSION_REVISION==0
 		net.enableWinograd(false);  //bug of opencv4.7.x in AVX only platform ,https://github.com/opencv/opencv/pull/23112 and https://github.com/opencv/opencv/issues/23080 
 		//net.enableWinograd(true);		//If your CPU supports AVX2, you can set it true to speed up
@@ -31,7 +31,7 @@ bool YoloSeg::ReadModel(Net& net, string& netPath, bool isCuda = false) {
 }
 
 
-bool YoloSeg::Detect(Mat& srcImg, Net& net, vector<OutputSeg>& output) {
+bool Yolov5Seg::Detect(Mat& srcImg, Net& net, vector<OutputSeg>& output) {
 	Mat blob;
 	output.clear();
 	int col = srcImg.cols;

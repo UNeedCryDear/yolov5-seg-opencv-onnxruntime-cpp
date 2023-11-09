@@ -1,4 +1,4 @@
-#include "yolov5_seg_onnx.h"
+#include "yolov5_onnx.h"
 using namespace std;
 using namespace cv;
 using namespace cv::dnn;
@@ -7,7 +7,7 @@ using namespace Ort;
 
 
 
-bool Yolov5SegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cudaID, bool warmUp) {
+bool Yolov5Onnx::ReadModel(const std::string& modelPath, bool isCuda, int cudaID, bool warmUp) {
 	if (_batchSize < 1) _batchSize = 1;
 	try
 	{
@@ -29,7 +29,7 @@ bool Yolov5SegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cud
 			cudaOption.device_id = cudaID;
 			_OrtSessionOptions.AppendExecutionProvider_CUDA(cudaOption);
 #else
-			_OrtStatus = OrtSessionOptionsAppendExecutionProvider_CUDA(_OrtSessionOptions, cudaID);
+			_OrtStatus = OrtSessionOptionsAppendExecutionProvider_CUDA(_OrtSessionOptions, cudaID); 
 #endif
 		}
 		else
@@ -46,7 +46,7 @@ bool Yolov5SegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cud
 		_OrtSession = new Ort::Session(_OrtEnv, modelPath.c_str(), _OrtSessionOptions);
 #endif
 
-		
+
 		//init input
 		_inputNodesNum = _OrtSession->GetInputCount();
 
@@ -76,54 +76,31 @@ bool Yolov5SegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cud
 		}
 		//init output
 		_outputNodesNum = _OrtSession->GetOutputCount();
-		if (_outputNodesNum != 2) {
-			cout << "This model has " << _outputNodesNum << "output, which is not a segmentation model.Please check your model name or path!" << endl;
-			return false;
-		}
 #if ORT_API_VERSION < ORT_OLD_VISON
 		_output_name0 = _OrtSession->GetOutputName(0, _OrtAllocator);
-		_output_name1 = _OrtSession->GetOutputName(1, _OrtAllocator);
+
 #else
 		_output_name0 = std::move(_OrtSession->GetOutputNameAllocated(0, _OrtAllocator));
-		_output_name1 = std::move(_OrtSession->GetOutputNameAllocated(1, _OrtAllocator));
+
 #endif
 		Ort::TypeInfo type_info_output0(nullptr);
 		Ort::TypeInfo type_info_output1(nullptr);
-		bool flag = false;
-#if ORT_API_VERSION < ORT_OLD_VISON
-		flag = strcmp(_output_name0, _output_name1) < 0;
-#else
-		flag = strcmp(_output_name0.get(), _output_name1.get()) < 0;
-#endif
-		if (flag)  //make sure "output0" is in front of  "output1"
-		{
-			type_info_output0 = _OrtSession->GetOutputTypeInfo(0);  //output0
-			type_info_output1 = _OrtSession->GetOutputTypeInfo(1);  //output1
-#if ORT_API_VERSION < ORT_OLD_VISON
-			_outputNodeNames.push_back(_output_name0);
-			_outputNodeNames.push_back(_output_name1);
-#else
-			_outputNodeNames.push_back(_output_name0.get());
-			_outputNodeNames.push_back(_output_name1.get());
-#endif
 
-		}
-		else {
-			type_info_output0 = _OrtSession->GetOutputTypeInfo(1);  //output0
-			type_info_output1 = _OrtSession->GetOutputTypeInfo(0);  //output1
+
+		type_info_output0 = _OrtSession->GetOutputTypeInfo(0);  //output0
+
 #if ORT_API_VERSION < ORT_OLD_VISON
-			_outputNodeNames.push_back(_output_name1);
-			_outputNodeNames.push_back(_output_name0);
+		_outputNodeNames.push_back(_output_name0);
+
 #else
-			_outputNodeNames.push_back(_output_name1.get());
-			_outputNodeNames.push_back(_output_name0.get());
+		_outputNodeNames.push_back(_output_name0.get());
+
 #endif
-		}
 
 		auto tensor_info_output0 = type_info_output0.GetTensorTypeAndShapeInfo();
 		_outputNodeDataType = tensor_info_output0.GetElementType();
 		_outputTensorShape = tensor_info_output0.GetShape();
-		auto tensor_info_output1 = type_info_output1.GetTensorTypeAndShapeInfo();
+		
 		if (isCuda && warmUp) {
 			//draw run
 			cout << "Start warming up" << endl;
@@ -153,12 +130,12 @@ bool Yolov5SegOnnx::ReadModel(const std::string& modelPath, bool isCuda, int cud
 
 }
 
-int Yolov5SegOnnx::Preprocessing(const std::vector<cv::Mat>& srcImgs, std::vector<cv::Mat>& outSrcImgs, std::vector<cv::Vec4d>& params) {
+int Yolov5Onnx::Preprocessing(const std::vector<cv::Mat>& srcImgs, std::vector<cv::Mat>& outSrcImgs, std::vector<cv::Vec4d>& params) {
 	outSrcImgs.clear();
 	Size input_size = Size(_netWidth, _netHeight);
 	for (int i = 0; i < srcImgs.size(); ++i) {
 		Mat temp_img = srcImgs[i];
-		Vec4d temp_param = {1,1,0,0};
+		Vec4d temp_param = { 1,1,0,0 };
 		if (temp_img.size() != input_size) {
 			Mat borderImg;
 			LetterBox(temp_img, borderImg, temp_param, input_size, false, false, true, 32);
@@ -172,7 +149,7 @@ int Yolov5SegOnnx::Preprocessing(const std::vector<cv::Mat>& srcImgs, std::vecto
 		}
 	}
 
-	int lack_num = _batchSize- srcImgs.size();
+	int lack_num = _batchSize - srcImgs.size();
 	if (lack_num > 0) {
 		for (int i = 0; i < lack_num; ++i) {
 			Mat temp_img = Mat::zeros(input_size, CV_8UC3);
@@ -184,7 +161,7 @@ int Yolov5SegOnnx::Preprocessing(const std::vector<cv::Mat>& srcImgs, std::vecto
 	return 0;
 
 }
-bool Yolov5SegOnnx::OnnxDetect(cv::Mat& srcImg, std::vector<OutputSeg>& output) {
+bool Yolov5Onnx::OnnxDetect(cv::Mat& srcImg, std::vector<OutputSeg>& output) {
 	vector<cv::Mat> input_data = { srcImg };
 	std::vector<std::vector<OutputSeg>> tenp_output;
 	if (OnnxBatchDetect(input_data, tenp_output)) {
@@ -193,7 +170,7 @@ bool Yolov5SegOnnx::OnnxDetect(cv::Mat& srcImg, std::vector<OutputSeg>& output) 
 	}
 	else return false;
 }
-bool Yolov5SegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<std::vector<OutputSeg>>& output) {
+bool Yolov5Onnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<std::vector<OutputSeg>>& output) {
 	vector<Vec4d> params;
 	vector<Mat> input_images;
 	Size input_size(_netWidth, _netHeight);
@@ -215,13 +192,9 @@ bool Yolov5SegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<s
 	);
 
 	//post-process
-
-
 	float* pdata = output_tensors[0].GetTensorMutableData<float>();
 	_outputTensorShape = output_tensors[0].GetTensorTypeAndShapeInfo().GetShape();
-	_outputMaskTensorShape = output_tensors[1].GetTensorTypeAndShapeInfo().GetShape();
-	vector<int> mask_protos_shape = { 1,(int)_outputMaskTensorShape[1],(int)_outputMaskTensorShape[2],(int)_outputMaskTensorShape[3] };
-	int mask_protos_length = VectorProduct(mask_protos_shape);
+
 	int64_t one_output_length = VectorProduct(_outputTensorShape) / _outputTensorShape[0];
 	int net_width = _outputTensorShape[2];
 	int net_height = _outputTensorShape[1];
@@ -229,7 +202,6 @@ bool Yolov5SegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<s
 		std::vector<int> class_ids;//结果id数组
 		std::vector<float> confidences;//结果每个id对应置信度数组
 		std::vector<cv::Rect> boxes;//每个id矩形框
-		std::vector<vector<float>> picked_proposals;  //output0[:,:, 5 + _className.size():net_width]===> for mask
 		for (int r = 0; r < net_height; r++) {    //stride
 			float box_score = pdata[4]; ;//box-confidence
 			if (box_score >= _classThreshold) {
@@ -239,8 +211,6 @@ bool Yolov5SegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<s
 				minMaxLoc(scores, 0, &max_class_socre, 0, &classIdPoint);
 				max_class_socre = (float)max_class_socre;
 				if (max_class_socre >= _classThreshold) {
-					vector<float> temp_proto(pdata + 5 + _className.size(), pdata + net_width);
-					picked_proposals.push_back(temp_proto);
 					//rect [x,y,w,h]
 					float x = (pdata[0] - params[img_index][2]) / params[img_index][0];  //x
 					float y = (pdata[1] - params[img_index][3]) / params[img_index][1];  //y
@@ -267,31 +237,9 @@ bool Yolov5SegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<s
 			result.id = class_ids[idx];
 			result.confidence = confidences[idx];
 			result.box = boxes[idx] & holeImgRect;
-			temp_mask_proposals.push_back(picked_proposals[idx]);
 			temp_output.push_back(result);
 		}
 
-		MaskParams mask_params;
-		mask_params.params = params[img_index];
-		mask_params.srcImgShape = srcImgs[img_index].size();
-		mask_params.netHeight = _netHeight;
-		mask_params.netWidth = _netWidth;
-		mask_params.maskThreshold = _maskThreshold;
-		Mat mask_protos = Mat(mask_protos_shape, CV_32F, output_tensors[1].GetTensorMutableData<float>() + img_index * mask_protos_length);
-		for (int i = 0; i < temp_mask_proposals.size(); ++i) {
-			GetMask2(Mat(temp_mask_proposals[i]).t(), mask_protos, temp_output[i], mask_params);
-		}
-
-
-		//******************** ****************
-		// 老版本的方案，如果上面在开启我注释的部分之后还一直报错，建议使用这个。
-		// If the GetMask2() still reports errors , it is recommended to use GetMask().
-		// Mat mask_proposals;
-		// for (int i = 0; i < temp_mask_proposals.size(); ++i) {
-		//	mask_proposals.push_back(Mat(temp_mask_proposals[i]).t());
-		//}
-		//GetMask(mask_proposals, mask_protos, temp_output, mask_params);
-		//*****************************************************/
 		output.push_back(temp_output);
 
 	}
