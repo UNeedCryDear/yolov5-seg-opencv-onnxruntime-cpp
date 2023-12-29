@@ -13,8 +13,11 @@
 class Yolov5SegOnnx {
 public:
 	Yolov5SegOnnx() :_OrtMemoryInfo(Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPUOutput)) {};
-
-	~Yolov5SegOnnx() {};
+	~Yolov5SegOnnx() {
+		if (_OrtSession != nullptr) {
+			delete _OrtSession;
+		};
+	}
 
 
 
@@ -25,27 +28,27 @@ public:
 	* \param[in] cudaID:if isCuda==true,run Ort-GPU on cudaID.
 	* \param[in] warmUp:if isCuda==true,warm up GPU-model.
 	*/
-	bool ReadModel(const std::string& modelPath, bool isCuda = false, int cudaID = 0, bool warmUp = true);
+	bool ReadModel(const std::string & modelPath, bool isCuda = false, int cudaID = 0, bool warmUp = true);
 
 	/** \brief  detect.
 	* \param[in] srcImg:a 3-channels image.
 	* \param[out] output:detection results of input image.
 	*/
-	bool OnnxDetect(cv::Mat& srcImg, std::vector<OutputSeg>& output);
+	bool OnnxDetect(cv::Mat & srcImg, std::vector<OutputSeg>&output);
 	/** \brief  detect,batch size= _batchSize
 	* \param[in] srcImg:A batch of images.
 	* \param[out] output:detection results of input images.
 	*/
-	bool OnnxBatchDetect(std::vector<cv::Mat>& srcImg, std::vector<std::vector<OutputSeg>>& output);
+	bool OnnxBatchDetect(std::vector<cv::Mat>&srcImg, std::vector<std::vector<OutputSeg>>&output);
 
 private:
 
 	template <typename T>
-	T VectorProduct(const std::vector<T>& v)
+	T VectorProduct(const std::vector<T>&v)
 	{
 		return std::accumulate(v.begin(), v.end(), 1, std::multiplies<T>());
 	};
-	int Preprocessing(const std::vector<cv::Mat>& SrcImgs, std::vector<cv::Mat>& OutSrcImgs, std::vector<cv::Vec4d>& params);
+	int Preprocessing(const std::vector<cv::Mat>&SrcImgs, std::vector<cv::Mat>&OutSrcImgs, std::vector<cv::Vec4d>&params);
 
 
 	const int _netWidth = 640;   //ONNX-net-input-width
@@ -55,7 +58,7 @@ private:
 
 	float _classThreshold = 0.5;
 	float _nmsThreshold = 0.45;
-	float _maskThreshold = 0.5; 
+	float _maskThreshold = 0.5;
 
 	Ort::Env _OrtEnv = Ort::Env(OrtLoggingLevel::ORT_LOGGING_LEVEL_ERROR, "Yolov5-Seg");
 	Ort::SessionOptions _OrtSessionOptions = Ort::SessionOptions();
@@ -63,7 +66,7 @@ private:
 	Ort::MemoryInfo _OrtMemoryInfo;
 	Ort::AllocatorWithDefaultOptions _OrtAllocator;
 	Ort::RunOptions _OrtRunOptions{ nullptr };
-	OrtStatus* _OrtStatus{nullptr};
+	OrtStatus* _OrtStatus{ nullptr };
 #if ORT_API_VERSION < ORT_OLD_VISON
 
 	char* _inputName, * _output_name0, * _output_name1;
@@ -97,4 +100,4 @@ public:
 
 
 
-};
+	};

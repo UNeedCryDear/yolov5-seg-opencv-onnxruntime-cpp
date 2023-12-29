@@ -14,7 +14,11 @@ class Yolov5Onnx {
 public:
 	Yolov5Onnx() :_OrtMemoryInfo(Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtDeviceAllocator, OrtMemType::OrtMemTypeCPUOutput)) {};
 
-	~Yolov5Onnx() {};
+	~Yolov5Onnx() {
+		if (_OrtSession != nullptr) {
+			delete _OrtSession;
+	}
+	};
 
 
 
