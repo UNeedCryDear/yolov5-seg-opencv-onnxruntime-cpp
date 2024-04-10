@@ -52,15 +52,16 @@ bool Yolov5::Detect(Mat& SrcImg, Net& net, vector<OutputSeg>& output) {
 	std::vector<cv::Rect> boxes;//每个id矩形框
 	float ratio_h = (float)netInputImg.rows / _netHeight;
 	float ratio_w = (float)netInputImg.cols / _netWidth;
-	int net_width = _className.size() + 5;  //输出的网络宽度是类别数+5
-	int net_out_width = netOutputImg[0].size[2];
-	assert(net_out_width == net_width, "Error Wrong number of _className");  //模型类别数目不对
+	int net_width = netOutputImg[0].size[2];  //输出的网络宽度是类别数+5
+	//int net_out_width = netOutputImg[0].size[2];
+	//assert(net_out_width == net_width, "Error Wrong number of _className");  //模型类别数目不对
 	float* pdata = (float*)netOutputImg[0].data;
 	int net_height = netOutputImg[0].size[1];
+	int score_length = net_width - 5;
 	for (int r = 0; r < net_height; ++r) {  
 		float box_score = pdata[4]; ;//获取每一行的box框中含有某个物体的概率
 		if (box_score >= _classThreshold) {
-			cv::Mat scores(1, _className.size(), CV_32FC1, pdata + 5);
+			cv::Mat scores(1, score_length, CV_32FC1, pdata + 5);
 			Point classIdPoint;
 			double max_class_socre;
 			minMaxLoc(scores, 0, &max_class_socre, 0, &classIdPoint);

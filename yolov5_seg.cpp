@@ -65,18 +65,19 @@ bool Yolov5Seg::Detect(Mat& srcImg, Net& net, vector<OutputSeg>& output) {
 	std::vector<vector<float>> picked_proposals;  //output0[:,:, 5 + _className.size():net_width]===> for mask
 	int net_width = net_output_img[0].size[2];
 	int net_height = net_output_img[0].size[1];
+	int score_length = net_width - 37;
 	float* pdata = (float*)net_output_img[0].data;
 	for (int r = 0; r < net_height; r++) {    //lines
 		float box_score = pdata[4];
 		if (box_score >= _classThreshold) {
-			cv::Mat scores(1, _className.size(), CV_32FC1, pdata + 5);
+			cv::Mat scores(1, score_length, CV_32FC1, pdata + 5);
 			Point classIdPoint;
 			double max_class_socre;
 			minMaxLoc(scores, 0, &max_class_socre, 0, &classIdPoint);
 			max_class_socre = (float)max_class_socre;
 			if (max_class_socre >= _classThreshold) {
 
-				vector<float> temp_proto(pdata + 5 + _className.size(), pdata + net_width);
+				vector<float> temp_proto(pdata + 5 + score_length, pdata + net_width);
 				picked_proposals.push_back(temp_proto);
 				//rect [x,y,w,h]
 				float x = (pdata[0] - params[2]) / params[0];  //x

@@ -225,6 +225,7 @@ bool Yolov5SegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<s
 	int64_t one_output_length = VectorProduct(_outputTensorShape) / _outputTensorShape[0];
 	int net_width = _outputTensorShape[2];
 	int net_height = _outputTensorShape[1];
+	int score_length = net_width - 37;
 	for (int img_index = 0; img_index < srcImgs.size(); ++img_index) {
 		std::vector<int> class_ids;//结果id数组
 		std::vector<float> confidences;//结果每个id对应置信度数组
@@ -233,13 +234,13 @@ bool Yolov5SegOnnx::OnnxBatchDetect(std::vector<cv::Mat>& srcImgs, std::vector<s
 		for (int r = 0; r < net_height; r++) {    //stride
 			float box_score = pdata[4]; ;//box-confidence
 			if (box_score >= _classThreshold) {
-				cv::Mat scores(1, _className.size(), CV_32FC1, pdata + 5);
+				cv::Mat scores(1, score_length, CV_32FC1, pdata + 5);
 				Point classIdPoint;
 				double max_class_socre;
 				minMaxLoc(scores, 0, &max_class_socre, 0, &classIdPoint);
 				max_class_socre = (float)max_class_socre;
 				if (max_class_socre >= _classThreshold) {
-					vector<float> temp_proto(pdata + 5 + _className.size(), pdata + net_width);
+					vector<float> temp_proto(pdata + 5 + score_length, pdata + net_width);
 					picked_proposals.push_back(temp_proto);
 					//rect [x,y,w,h]
 					float x = (pdata[0] - params[img_index][2]) / params[img_index][0];  //x
